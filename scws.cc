@@ -1,30 +1,28 @@
 #include <node.h>
+#include <nan.h>
 #include <v8.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <node.h>
-#include <scws/scws.h>
+#include "scws.h"
+
 using namespace v8;
 using namespace node;
 
-class Scws: ObjectWrap {
-  public :
-    scws_t scws;
-    Scws () {
-      scws = scws_new();
-      scws_set_charset(scws, "utf8");
-    }
-    ~Scws () {
-      scws_free(scws);
-    }
-    static void Init();
-    static v8::Handle<v8::Value> NewInstance(const v8::Arguments& args);
-    static v8::Persistent<v8::Function> constructor;
-    static v8::Handle<v8::Value> New(const v8::Arguments& args);
+//Persistent<Function> Scws::constructor;
 
-static Handle<Value> addDict(const Arguments& args){
-  HandleScope scope;
+Scws::Scws() {
+  scws = scws_new();
+  scws_set_charset(scws, "utf8");
+}
+
+Scws::~Scws() {
+  scws_free(scws);
+}
+
+NAN_METHOD(Scws::addDict) {
+  NanScope();
   Scws *scws = ObjectWrap::Unwrap<Scws>(args.This());
   Handle<Value> arg0 = args[0];
   String::Utf8Value dict(arg0);
@@ -33,11 +31,11 @@ static Handle<Value> addDict(const Arguments& args){
   } else {
     scws_add_dict(scws->scws, *dict, SCWS_XDICT_TXT);
   }
-  return scope.Close(Undefined());
+  NanReturnUndefined();
 }
 
-static Handle<Value> setDict(const Arguments& args){
-  HandleScope scope;
+NAN_METHOD(Scws::setDict) {
+  NanScope();
   Scws *scws = ObjectWrap::Unwrap<Scws>(args.This());
   Handle<Value> arg0 = args[0];
   String::Utf8Value dict(arg0);
@@ -46,11 +44,11 @@ static Handle<Value> setDict(const Arguments& args){
   } else {
     scws_set_dict(scws->scws, *dict, SCWS_XDICT_TXT);
   }
-  return scope.Close(Undefined());
+  NanReturnUndefined();
 }
 
-static Handle<Value> setMulti(const Arguments& args){
-  HandleScope scope; 
+NAN_METHOD(Scws::setMulti) {
+  NanScope();
   Scws *scws = ObjectWrap::Unwrap<Scws>(args.This());
   int multi = args[0]->NumberValue();
   if (multi == 1) {
@@ -58,20 +56,20 @@ static Handle<Value> setMulti(const Arguments& args){
   } else {
     scws_set_multi(scws->scws, 0);
   }
-  return scope.Close(Undefined());
+  NanReturnUndefined();
 }
 
-static Handle<Value> setRule(const Arguments& args){
-  HandleScope scope;
+NAN_METHOD(Scws::setRule) {
+  NanScope();
   Scws *scws = ObjectWrap::Unwrap<Scws>(args.This());
   Handle<Value> arg0 = args[0];
   String::Utf8Value rule(arg0);
   scws_set_rule(scws->scws, *rule);
-  return scope.Close(Undefined());
+  NanReturnUndefined();
 }
 
-static Handle<Value> segment(const Arguments& args) {
-    HandleScope scope;
+NAN_METHOD(Scws::segment) {
+  NanScope();
     Scws *scwsObj = ObjectWrap::Unwrap<Scws>(args.This());
     scws_top_t res, cur;
     Handle<Value> arg0 = args[0];
@@ -83,19 +81,19 @@ static Handle<Value> segment(const Arguments& args) {
     } 
     scws_t scws = scwsObj->scws;
     scws_send_text(scws, *txt, txtLen);
-    Local<Array> tops = Array::New();
+    Local<Array> tops = NanNew<Array>();
     int index = 0;
 
     cur = res = scws_get_tops(scws, limit, NULL);
     while(cur != NULL){
-        Local<Object> objWord = Object::New();
-        objWord->Set(String::NewSymbol("word"), String::New(cur->word));
-        objWord->Set(String::NewSymbol("weight"), Number::New(cur->weight));
-        objWord->Set(String::NewSymbol("times"), Integer::New(cur->times));
+        Local<Object> objWord = NanNew<Object>();
+        objWord->Set(NanNew<String>("word"), NanNew<String>(cur->word));
+        objWord->Set(NanNew<String>("weight"), NanNew<Number>(cur->weight));
+        objWord->Set(NanNew<String>("times"), NanNew<Integer>(cur->times));
         if(cur->attr[1] == '\0'){
-            objWord->Set(String::NewSymbol("attr"), String::New(cur->attr, 1));
+            objWord->Set(NanNew<String>("attr"), NanNew<String>(cur->attr, 1));
         }else{
-            objWord->Set(String::NewSymbol("attr"), String::New(cur->attr, 2));
+            objWord->Set(NanNew<String>("attr"), NanNew<String>(cur->attr, 2));
         }
         cur = cur->next;
         tops->Set(index, objWord);
@@ -103,11 +101,12 @@ static Handle<Value> segment(const Arguments& args) {
     }
     scws_free_tops(res);
     scws_free_tops(cur);
-    return scope.Close(tops);
+    NanReturnValue(tops);
 }
 
-static Handle<Value> serialize(const Arguments& args) {
-  HandleScope scope;
+NAN_METHOD(Scws::serialize) {
+  NanScope();
+
   Scws *scwsObj = ObjectWrap::Unwrap<Scws>(args.This());
   scws_t scws = scwsObj->scws;
   scws_res_t res, cur;
@@ -115,20 +114,20 @@ static Handle<Value> serialize(const Arguments& args) {
   String::Utf8Value txt(arg0);
   int txtLen = strlen(*txt);
   scws_send_text(scws, *txt, txtLen);
-  Local<Array> words = Array::New();
+  Local<Array> words = NanNew<Array>();
   int index = 0;
   while ((res = cur = scws_get_result(scws)))
   {
     while (cur != NULL)
     {
-      Local<Object> word = Object::New();
-      word->Set(String::NewSymbol("word"), String::New(*txt + cur->off, cur->len));
+      Local<Object> word = NanNew<Object>();
+      word->Set(NanNew<String>("word"), NanNew<String>(*txt + cur->off, cur->len));
       if(cur->attr[1] == '\0'){
-        word->Set(String::NewSymbol("attr"), String::New(cur->attr, 1));
+        word->Set(NanNew<String>("attr"), NanNew<String>(cur->attr, 1));
       }else{
-        word->Set(String::NewSymbol("attr"), String::New(cur->attr, 2));
+        word->Set(NanNew<String>("attr"), NanNew<String>(cur->attr, 2));
       }
-      word->Set(String::NewSymbol("idf"), Number::New(cur->idf));
+      word->Set(NanNew<String>("idf"), NanNew<Number>(cur->idf));
       words->Set(index, word);
       //printf("WORD: %.*s/%s (IDF = %4.2f)\n", cur->len, text+cur->off, cur->attr, cur->idf);
       cur = cur->next;
@@ -138,50 +137,69 @@ static Handle<Value> serialize(const Arguments& args) {
     scws_free_result(res);
     scws_free_result(cur);
   }
-  return scope.Close(words);
+  NanReturnValue(words);
 }
-
-};
 
 Persistent<Function> Scws::constructor;
 
-void Scws::Init() {
-  Local<FunctionTemplate> tpl = FunctionTemplate::New(New);
-  tpl->SetClassName(String::NewSymbol("MyObject"));
+void Scws::Init(Handle<Object> exports) {
+  NanScope();
+  Local<FunctionTemplate> tpl = NanNew<FunctionTemplate>(New);
+  tpl->SetClassName(NanNew("Scws"));
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
-  constructor = Persistent<Function>::New(tpl->GetFunction());
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setDict", setDict);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "serialize", serialize);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setRule", setRule);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "setMulti", setMulti);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "addDict", addDict);
+  NODE_SET_PROTOTYPE_METHOD(tpl, "segment", segment);
+
+  NanAssignPersistent(constructor, tpl->GetFunction());
+  exports->Set(NanNew("Scws"), tpl->GetFunction());
 }
 
-Handle<Value> Scws::New(const Arguments& args) {
-  HandleScope scope;
+NAN_METHOD(Scws::New) {
+  NanScope();
   Scws* obj = new Scws();
   obj->Wrap(args.This());
-  return args.This();
+  NanReturnValue(args.This());
 }
 
+/*
 Handle<Value> Scws::NewInstance(const Arguments& args) {
   HandleScope scope;
   Local<Object> instance = constructor->NewInstance();
-  instance->Set(String::NewSymbol("setRule"), FunctionTemplate::New(setRule)->GetFunction());
-  instance->Set(String::NewSymbol("setMulti"), FunctionTemplate::New(setMulti)->GetFunction());
-  instance->Set(String::NewSymbol("setDict"), FunctionTemplate::New(setDict)->GetFunction());
-  instance->Set(String::NewSymbol("addDict"), FunctionTemplate::New(addDict)->GetFunction());
-  instance->Set(String::NewSymbol("segment"), FunctionTemplate::New(segment)->GetFunction());
-  instance->Set(String::NewSymbol("serialize"), FunctionTemplate::New(serialize)->GetFunction());
-  return scope.Close(instance);
+  instance->->Set(NanNew("setRule"), NanNew<v8::FunctionTemplate>(setRule)->GetFunction());
+  instance->->Set(NanNew("setMulti"), NanNew<v8::FunctionTemplate>(setMulti)->GetFunction());
+  instance->->Set(NanNew("setDict"), NanNew<v8::FunctionTemplate>(setDict)->GetFunction());
+  instance->->Set(NanNew("addDict"), NanNew<v8::FunctionTemplate>(addDict)->GetFunction());
+  instance->->Set(NanNew("segment"), NanNew<v8::FunctionTemplate>(segment)->GetFunction());
+  instance->->Set(NanNew("serialize"), NanNew<v8::FunctionTemplate>(serialize)->GetFunction());
+
+  NanReturnValue(instance);
+}
+*/
+
+Local<Object> Scws::NewInstance(Local<Value> arg) {
+  NanEscapableScope();
+
+  const unsigned argc = 1;
+  Local<Value> argv[argc] = { arg };
+  Local<Function> cons = NanNew<Function>(constructor);
+  Local<Object> instance = cons->NewInstance(argc, argv);
+
+  return NanEscapeScope(instance);
 }
 
-Handle<Value> CreateObject(const Arguments& args) {
-  HandleScope scope;
-  return scope.Close(Scws::NewInstance(args));
+NAN_METHOD(CreateObject) {
+  NanScope();
+  NanReturnValue(Scws::NewInstance(args[0]));
 }
 
-void InitAll(Handle<Object> exports) {
-  Scws::Init();
-  exports->Set(String::NewSymbol("createWorker"),
-      FunctionTemplate::New(CreateObject)->GetFunction());
-
+void InitAll(Handle<Object> exports, Handle<Object> module) {
+  NanScope();
+  Scws::Init(exports);
 }
 
 NODE_MODULE(nscws, InitAll)

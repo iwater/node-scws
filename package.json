@@ -1,5 +1,8 @@
 {
-  "name" : "node-scws",
-  "description" : "wapper the libscws by Mr. Hightman",
-  "version" :"0.0.3"
+  "name": "node-scws",
+  "description": "wapper the libscws by Mr. Hightman",
+  "version": "0.0.4",
+  "dependencies": {
+    "nan": "^1.4.1"
+  }
 }
