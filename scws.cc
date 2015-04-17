@@ -1,16 +1,8 @@
-#include <node.h>
-#include <nan.h>
-#include <v8.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <node.h>
 #include "scws.h"
 
 using namespace v8;
-using namespace node;
 
-//Persistent<Function> Scws::constructor;
+Persistent<Function> Scws::constructor;
 
 Scws::Scws() {
   scws = scws_new();
@@ -78,7 +70,7 @@ NAN_METHOD(Scws::segment) {
     int limit = txtLen;
     if (args[1]->IsNumber()) {
       limit = args[1]->NumberValue();
-    } 
+    }
     scws_t scws = scwsObj->scws;
     scws_send_text(scws, *txt, txtLen);
     Local<Array> tops = NanNew<Array>();
@@ -132,15 +124,13 @@ NAN_METHOD(Scws::serialize) {
       //printf("WORD: %.*s/%s (IDF = %4.2f)\n", cur->len, text+cur->off, cur->attr, cur->idf);
       cur = cur->next;
       index ++;
-      
+
     }
     scws_free_result(res);
     scws_free_result(cur);
   }
   NanReturnValue(words);
 }
-
-Persistent<Function> Scws::constructor;
 
 void Scws::Init(Handle<Object> exports) {
   NanScope();
@@ -165,41 +155,3 @@ NAN_METHOD(Scws::New) {
   obj->Wrap(args.This());
   NanReturnValue(args.This());
 }
-
-/*
-Handle<Value> Scws::NewInstance(const Arguments& args) {
-  HandleScope scope;
-  Local<Object> instance = constructor->NewInstance();
-  instance->->Set(NanNew("setRule"), NanNew<v8::FunctionTemplate>(setRule)->GetFunction());
-  instance->->Set(NanNew("setMulti"), NanNew<v8::FunctionTemplate>(setMulti)->GetFunction());
-  instance->->Set(NanNew("setDict"), NanNew<v8::FunctionTemplate>(setDict)->GetFunction());
-  instance->->Set(NanNew("addDict"), NanNew<v8::FunctionTemplate>(addDict)->GetFunction());
-  instance->->Set(NanNew("segment"), NanNew<v8::FunctionTemplate>(segment)->GetFunction());
-  instance->->Set(NanNew("serialize"), NanNew<v8::FunctionTemplate>(serialize)->GetFunction());
-
-  NanReturnValue(instance);
-}
-*/
-
-Local<Object> Scws::NewInstance(Local<Value> arg) {
-  NanEscapableScope();
-
-  const unsigned argc = 1;
-  Local<Value> argv[argc] = { arg };
-  Local<Function> cons = NanNew<Function>(constructor);
-  Local<Object> instance = cons->NewInstance(argc, argv);
-
-  return NanEscapeScope(instance);
-}
-
-NAN_METHOD(CreateObject) {
-  NanScope();
-  NanReturnValue(Scws::NewInstance(args[0]));
-}
-
-void InitAll(Handle<Object> exports, Handle<Object> module) {
-  NanScope();
-  Scws::Init(exports);
-}
-
-NODE_MODULE(nscws, InitAll)
